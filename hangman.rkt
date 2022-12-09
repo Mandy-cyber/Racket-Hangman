@@ -1,6 +1,3 @@
-;; The first three lines of this file were inserted by DrRacket. They record metadata
-;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname hangman) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
 (require 2htdp/batch-io)
 (require 2htdp/image)
 (require 2htdp/universe)
@@ -451,20 +448,20 @@
     [(zero? n) empty-image]
     [(positive? n)
      (cond
-       [(= n 6) HEAD]
-       [(= n 5) HEAD&BODY]
-       [(= n 4) HEAD&BODY&LLEG]
-       [(= n 3) HEAD&BODY&2LEGS]
-       [(= n 2) HEAD&BODY&LEGS&LARM]
-       [(= n 1) FULL-HANGMAN])]))
+       [(= n 1) HEAD]
+       [(= n 2) HEAD&BODY]
+       [(= n 3) HEAD&BODY&LLEG]
+       [(= n 4) HEAD&BODY&2LEGS]
+       [(= n 5) HEAD&BODY&LEGS&LARM]
+       [(= n 6) FULL-HANGMAN])]))
 
 (check-expect (guesses->hangman 0) empty-image)
-(check-expect (guesses->hangman 6) HEAD)
-(check-expect (guesses->hangman 5) HEAD&BODY)
-(check-expect (guesses->hangman 4) HEAD&BODY&LLEG)
-(check-expect (guesses->hangman 3) HEAD&BODY&2LEGS)
-(check-expect (guesses->hangman 2) HEAD&BODY&LEGS&LARM)
-(check-expect (guesses->hangman 1) FULL-HANGMAN)
+(check-expect (guesses->hangman 1) HEAD)
+(check-expect (guesses->hangman 2) HEAD&BODY)
+(check-expect (guesses->hangman 3) HEAD&BODY&LLEG)
+(check-expect (guesses->hangman 4) HEAD&BODY&2LEGS)
+(check-expect (guesses->hangman 5) HEAD&BODY&LEGS&LARM)
+(check-expect (guesses->hangman 6) FULL-HANGMAN)
 
 ;----------------------------------------------------------------
 
@@ -699,6 +696,43 @@
 
 ;----------------------------------------------------------------
 
+; num-wrong-guesses : [ListOf Guess] String -> Nat
+; Determines how many wrong guesses a user has made.
+(define (num-wrong-guesses guesses correct)
+  (local [(define (word? w) (> (string-length w) 1))]
+
+    (cond
+      [(empty? guesses) 0]
+      [(cons? guesses)
+       (local [(define letters
+                 (foldl (λ (g accum)
+                          (if (word? g)
+                              ; if it is a word
+                              (append
+                               ; filter out any duplicate letters
+                               (filter
+                                (λ (g) (not (string-in-list? g accum)))
+                                (explode g))
+                               accum)
+                              ; if it is just a letter
+                              (cons g accum)))
+                        '() guesses))
+
+               (define wrong-guesses
+                 (filter (λ (l)
+                           (not (string-in-list? l (explode correct))))
+                         letters))]
+
+         (length wrong-guesses))])))
+
+#|
+(check-expect (num-wrong-guesses GAME0) 0)
+(check-expect (num-wrong-guesses GAME1) 2)
+(check-expect (num-wrong-guesses GAME2) 1)
+(check-expect (num-wrong-guesses GAME3) 6)
+|#
+;----------------------------------------------------------------
+
 ; enough-points? : Nat -> Boolean
 ; Does a user have a high enough score to use a hint?
 ; (need 20 points for one hint)
@@ -757,11 +791,7 @@
           (define diagram (hangman-diagram h))
           (define image (hangman-word h))
           (define score (hangman-score h))
-          (define hints (hangman-hints h))
-          (define (num-wrong-guesses guesses)
-            (- 6 (length (filter
-                          (λ (g) (not (guess-in-word? g correct)))
-                          guesses))))]
+          (define hints (hangman-hints h))]
 
     (cond
       ; backspace
@@ -779,7 +809,7 @@
               correct
               ""
               new-guesses
-              (guesses->hangman (num-wrong-guesses new-guesses))
+              (guesses->hangman (num-wrong-guesses new-guesses correct))
               image score hints)))]
 
       ; up-key (aka get a hint)
